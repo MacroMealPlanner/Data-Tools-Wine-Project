@@ -1,0 +1,84 @@
+install.packages("tidyverse")
+library(tidyverse)
+library(dplyr)
+
+#imports the data set
+winedata <- winemag_data_130k_v2
+
+#provides a short preview of the data
+glimpse(winedata)
+
+#initial statistic analysis that provides average points per country
+winedata %>%
+  group_by(country) %>%
+  mean(points, na.rm = TRUE) 
+
+#provides the chart of number of reviews per country (by the top 10 countries)
+winedata %>%
+  group_by(country) %>%
+  count(country) %>%
+  arrange(desc(n)) %>%
+  head(10) %>%
+  ggplot(aes(x=fct_reorder(country, desc(n)), y=n, fill = country)) + 
+  geom_col() +  xlab("Country") + ylab("Number of Reviews") + coord_flip() +
+  theme(legend.position="none")
+
+#not sure wheats going on here
+winedata %>%
+  filter(country  %in% c("US", "France", "Italy", "Spain", "Portugal", "Chile", "Argentina", "Austria", "Australia", "Germany")) %>%
+  group_by(country) %>%
+  summarise(avgPoints = mean(points)) %>%
+  arrange(desc(avgPoints))
+  
+#provides the chart for different variety wines by the top ten countries
+top_country_variety <- winedata %>%
+  group_by(country) %>%
+  filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
+  filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
+ggplot(top_country_variety, aes(x=country, y= price)) +  
+  geom_jitter(alpha = 0.5, aes(color=variety)) +
+  geom_boxplot(alpha = 0) +
+  scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") 
+
+#provides similiar chart to the one listed above
+variety_by_top_country <- winedata %>%
+  group_by(variety) %>%
+  filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
+  filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
+ggplot(variety_by_top_country, aes(x=variety, y= price)) +  
+  geom_jitter(alpha = 0.5, aes(color=variety)) +
+  geom_boxplot(alpha = 0) +
+  scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") +
+  theme(legend.position="none")
+  
+ #providesa breakdown of prices per different countries (focuses on top 5 countiries) (ERIC did this)
+ top_country <- winedata %>%
+  group_by(country) %>%
+  filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
+  filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
+ggplot(top_country, aes(x=country, y= price)) +  
+  geom_jitter(alpha = 0.5, aes(color=variety)) +
+  geom_boxplot(alpha = 0) +
+  scale_y_log10() 
+
+#box plot and jitter polot that shows different wines and price per region (Chad did this)
+top_country_variety = winedata %>%
+  group_by(country) %>%
+  filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
+  filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
+ggplot(top_country_variety, aes(x=country, y= price)) +  
+  geom_jitter(alpha = 0.5, aes(color=variety)) +
+  geom_boxplot(alpha = 0) +
+  scale_y_log10() 
+
+# combines top 10 countries and showsz price to different variety with a box plot and jitter plot
+variety_by_top_country <- wine_reviews %>%
+  group_by(variety) %>%
+  filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
+  filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
+ggplot(variety_by_top_country, aes(x=variety, y= price)) +  
+  geom_jitter(alpha = 0.5, aes(color=variety)) +
+  geom_boxplot(alpha = 0) +
+  scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") +
+  theme(legend.position="none")
+
