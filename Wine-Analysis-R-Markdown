@@ -1,6 +1,6 @@
 ---
 output: html_document
-title: "Comparison of Variety, Score, and Price of Wines from Different Countries"
+title: "Predicting Point Score of Wine based on Different Attributes."
 authors:
 - name: Luke Barousse, Mariel Behnke, Chad Giganti, Alex Masica, Eric Weien
   affiliation: Ohio State University
@@ -16,15 +16,16 @@ endnote: no
 
 
 # Introduction
-
+We can assume that our data set is normal based on the quanity of data provided (130K reviews) and by running tests to ensure normality. 
 
 # Initial analysis
 
 First, we started by installing all the necessary packages and loading the data set.
 
-```{r packages, message = FALSE, warning = FALSE}
+```{r packages, message = FALSE, warning = FALSE, error = FALSE}
 library(tidyverse)
 library(dplyr)
+library(moderndive)
 library(readr)
 winemag_data_130k_v2 <- read_csv("Downloads/wine-reviews/winemag-data-130k-v2.csv")
 winedata <- winemag_data_130k_v2
@@ -37,7 +38,7 @@ glimpse(winedata)
 ```
 (Write a description of the data set)
 
-### Average Reviews Per Country
+## Average reviews per country
 
 ```{r avgreviews}
 winedata %>%
@@ -48,7 +49,7 @@ winedata %>%
 ```
 
 
-### Number Reviews Per Country (Top 10)
+## Number reviews per country (Top 10)
 
 ```{r reviewscountry, warning = FALSE}
 winedata %>%
@@ -61,7 +62,7 @@ winedata %>%
   theme(legend.position="none")
 ```
 
-### Variety/Price Per Country (Top 10)
+## Variety/Price per country (Top 10)
 
 ```{r varietycountry, warning= FALSE}
 top_country_variety <- winedata %>%
@@ -72,4 +73,91 @@ ggplot(top_country_variety, aes(x=country, y= price)) +
   geom_jitter(alpha = 0.5, aes(color=variety)) +
   geom_boxplot(alpha = 0) +
   scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") 
+```
+
+## Price per variety for top 10 countries
+
+```{r varieties, warning= FALSE}
+variety_by_top_country <- winedata %>%
+  group_by(variety) %>%
+  filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
+  filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
+ggplot(variety_by_top_country, aes(x=variety, y= price)) +  
+  geom_jitter(alpha = 0.5, aes(color=variety)) +
+  geom_boxplot(alpha = 0) +
+  scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") +
+  theme(legend.position="none")
+```
+
+#Regression analysis to explain points
+
+## Using a single variables to understand correlation to point ranking
+We first plan to go through and compare the prediction of points based on a single value.  We focus on the following variables:
+Price
+Variety
+Country
+Province
+Taster
+
+### Analyzing price
+```{r pointsToprice}
+lm_points_price <- lm(points ~ price, top_country_variety)
+get_regression_table(lm_points_price)
+get_regression_summaries(lm_points_price)
+```
+This begins to show a slight correllation to between price and points.  With the point scale starting at 87.6 and then increasing .027 for each dollar increase in price.  However analayzing the full data set, one can see that the lowest score is actually around 79 and increases from there.
+
+```{r pointsToprice2, warning= FALSE}
+ggplot(top_country_variety, aes(x = price, y= points, color = country)) + 
+  geom_jitter() + geom_smooth(method = "lm") + 
+  scale_x_log10() +  ylab("Points") + xlab("Price (Log Scale)")
+```
+We decided to take this a step further and analyze this visulally breaking it out by country. One can see from the visualization that there is a strong correlation between the price and points.  
+
+### Analyzing variety
+
+```{r pointsTovariety}
+lm_points_variety <- lm(points ~ variety, top_country_variety)
+get_regression_table(lm_points_variety)
+get_regression_summaries(lm_points_variety)
+```
+This will endu up showing our lowest correlation related to point scale.  Interestingly enough, we felt with our inital research that this would be a key correlator of point ranking, however this disproved that.
+
+
+### Analyzing country
+```{r pointsTocountry}
+lm_country <- lm(points ~ country, top_country_variety)
+get_regression_table(lm_country)
+get_regression_summaries(lm_country)
+```
+Using Argentia as the base country, it appears that the top 10 countries vary in range from 86.3 to 90.8, with Austria having the highest point value based on country alone.  Although all variables are significant at the 5% level, the R^2 is even small than that for the evaluation against price.
+
+### Analyzing province
+```{r pointsToprovince}
+lm_province <- lm(points ~ province, top_country_variety)
+get_regression_summaries(lm_province)
+```
+As expected based on having more provinces than countries (148 provinces vs 10 countries), we saw a higher correlation between the variables.  However if you look further in the p-values (too many values to print here), more than half of the provinces are insignificant at the 5% level.
+
+### Analyzing tasters
+```{r pointsTotaster}
+lm_taster <- lm(points ~ taster_name, top_country_variety)
+get_regression_table(lm_taster)
+get_regression_summaries(lm_taster)
+```
+Analyzing 17 different tasters we see that the we have a correlation that is even higher than province and country, but still doesn't meet the level of price.  Looking at the significance of these raters, we see that only 4 of the raters are insignificant at the 5% level.
+
+## Using a single variables to understand correlation to point ranking
+Looking at the previous results, we found that Price, Tasters, and Province had the stronest correlation, in that order.  Country and variety had the lowest correlation.
+
+### Analyzing top 3 variables
+```{r pointsTop3}
+lm_top3 <- lm(points ~ price + taster_name + province, top_country_variety)
+get_regression_summaries(lm_top3)
+```
+
+### Analyzing all 5 variables
+```{r pointsAll5}
+lm_all5 <- lm(points ~ price + taster_name + province + country + variety, top_country_variety)
+get_regression_summaries(lm_all5)
 ```
