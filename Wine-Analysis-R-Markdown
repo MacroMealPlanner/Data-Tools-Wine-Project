@@ -1,10 +1,5 @@
-output: 
-  pdf_document:
-    citation_package: natbib
-    keep_tex: true
-    fig_caption: true
-    latex_engine: pdflatex
-    template: ~/Dropbox/miscelanea/svm-r-markdown-templates/svm-latex-ms.tex
+---
+output: html_document
 title: "Comparison of Variety, Score, and Price of Wines from Different Countries"
 authors:
 - name: Luke Barousse, Mariel Behnke, Chad Giganti, Alex Masica, Eric Weien
@@ -15,83 +10,66 @@ date: "`r format(Sys.time(), '%B %d, %Y')`"
 geometry: margin=1in
 fontfamily: mathpazo
 fontsize: 11pt
-# spacing: double
+spacing: double
 endnote: no
 ---
+
 
 # Introduction
 
 
 # Initial analysis
 
+First, we started by installing all the necessary packages and loading the data set.
 
-```{r}
+```{r packages, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(dplyr)
+library(readr)
+winemag_data_130k_v2 <- read_csv("Downloads/wine-reviews/winemag-data-130k-v2.csv")
+winedata <- winemag_data_130k_v2
 ```
 
-# Next
+Next we took an intial look at the data set after importing it.
 
-# Introduction
+```{r dataimport}
+glimpse(winedata)
+```
+(Write a description of the data set)
+
+### Average Reviews Per Country
+
+```{r avgreviews}
+winedata %>%
+  filter(country  %in% c("US", "France", "Italy", "Spain", "Portugal", "Chile", "Argentina", "Austria", "Australia", "Germany")) %>%
+  group_by(country) %>%
+  summarise(avgPoints = mean(points)) %>%
+  arrange(desc(avgPoints))
+```
 
 
-Notes for R Markdown
+### Number Reviews Per Country (Top 10)
 
-- Single asterisks italicize text *like this*. 
-- Double asterisks embolden text **like this**.
+```{r reviewscountry, warning = FALSE}
+winedata %>%
+  group_by(country) %>%
+  count(country) %>%
+  arrange(desc(n)) %>%
+  head(10) %>%
+  ggplot(aes(x=fct_reorder(country, desc(n)), y=n, fill = country)) + 
+  geom_col() +  xlab("Country") + ylab("Number of Reviews") + coord_flip() +
+  theme(legend.position="none")
+```
 
-Start a new paragraph with a blank line separating paragraphs.
+### Variety/Price Per Country (Top 10)
 
-- This will start an unordered list environment, and this will be the first item.
-- This will be a second item.
-- A third item.
-    - Four spaces and a dash create a sublist and this item in it.
-- The fourth item.
-    
-1. This starts a numerical list.
-2. This is no. 2 in the numerical list.
-    
-# This Starts A New Section
-## This is a Subsection
-### This is a Subsubsection
-#### This starts a Paragraph Block.
-
-> This will create a block quote, if you want one.
-
-Want a table? This will create one.
-
-Table Header  | Second Header
-------------- | -------------
-Table Cell    | Cell 2
-Cell 3        | Cell 4 
-
-Note that the separators *do not* have to be aligned.
-
-Want an image? This will do it.
-
-![caption for my image](path/to/image.jpg)
-
-`fig_caption: yes` will provide a caption. Put that in the YAML metadata.
-
-Almost forgot about creating a footnote.[^1] This will do it again.[^2]
-
-[^1]: The first footnote
-[^2]: The second footnote
-
-Want to cite something? 
-
-- Find your biblatexkey in your bib file.
-- Put an @ before it, like @smith1984, or whatever it is.
-- @smith1984 creates an in-text citation (e.g. Smith (1984) says...)
-- [@smith1984] creates a parenthetical citation (Smith, 1984)
-
-That'll also automatically create a reference list at the end of the document.
-
-[In-text link to Google](http://google.com) as well.
-
-<!--
-# References
-\setlength{\parindent}{-0.2in}
-\setlength{\leftskip}{0.2in}
-\setlength{\parskip}{8pt}
-\vspace*{-0.2in}
-\noindent
--->
+```{r varietycountry, warning= FALSE}
+top_country_variety <- winedata %>%
+  group_by(country) %>%
+  filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
+  filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
+ggplot(top_country_variety, aes(x=country, y= price)) +  
+  geom_jitter(alpha = 0.5, aes(color=variety)) +
+  geom_boxplot(alpha = 0) +
+  scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") 
+```
