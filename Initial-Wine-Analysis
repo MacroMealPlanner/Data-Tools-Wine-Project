@@ -1,6 +1,7 @@
 install.packages("tidyverse")
 library(tidyverse)
 library(dplyr)
+library(moderndive)
 
 #imports the data set
 winedata <- winemag_data_130k_v2
@@ -53,7 +54,7 @@ ggplot(variety_by_top_country, aes(x=variety, y= price)) +
 
 
 #box plot and jitter polot that shows different wines and price per region (Chad did this)
-top_country_variety = winedata %>%
+top_country_variety <- winedata %>%
   group_by(country) %>%
   filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
   filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
@@ -61,9 +62,14 @@ ggplot(top_country_variety, aes(x=country, y= price)) +
   geom_jitter(alpha = 0.5, aes(color=variety)) +
   geom_boxplot(alpha = 0) +
   scale_y_log10() 
+#violin plot
+ggplot(top_country_variety, aes(x=country, y= price)) +  
+  geom_jitter(alpha = 0.5, aes(color=variety)) +
+  geom_violin(alpha = 0) +
+  scale_y_log10() 
 
 # combines top 10 countries and showsz price to different variety with a box plot and jitter plot
-variety_by_top_country <- wine_reviews %>%
+variety_by_top_country <- winedata %>%
   group_by(variety) %>%
   filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
   filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
@@ -73,6 +79,8 @@ ggplot(variety_by_top_country, aes(x=variety, y= price)) +
   scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") +
   theme(legend.position="none")
 
+cor(winedata, use = "complete")
+
 #regression binomial analysis
 #logmodel <- glm(make ~ Distance+ Gender + Shot, data = balldata, family = "binomial")
 #summary(logmodel)
@@ -80,3 +88,74 @@ ggplot(variety_by_top_country, aes(x=variety, y= price)) +
 #predict anlaysis
 #new <- data.frame(Distance = 1:15)
 #predict(logmodel, newdata = new, type = "response")
+
+#reviewer points plot  
+ggplot(winedata, aes(x=taster_name, y= points)) +  
+  geom_violin(alpha = 0) 
+
+#regression
+model_lm_pointsprice = lm(points ~ price, winedata)
+summary(model_lm_pointsprice)
+
+model_lm_pointspricecountry = lm(points ~ price + country, winedata)
+summary(model_lm_pointspricecountry)
+
+model_lm_pointstastername = lm(points ~ taster_name, winedata)
+summary(model_lm_pointstastername)
+
+model_lm_pointpricestastername = lm(points ~ price + taster_name, winedata)
+summary(model_lm_pointstastername)
+
+anovareviewer = aov(points ~ taster_name, winedata)
+summary(anovareviewer)
+
+anovapricereviewer = anova(model_lm_pointpricestastername)
+
+summary(anovapricereviewer)
+
+aov(model_lm_pointpricestastername)
+
+
+
+set.seed(50000)
+
+# Randomly reorder the rows
+wine_reviews_shuffled <- wine_reviews %>% 
+  sample_frac(size = 1, replace = FALSE)
+
+# Train/test split
+train <- wine_reviews_shuffled %>%
+  slice(1:50000)
+test <- wine_reviews_shuffled %>%
+  slice(50001:129971)
+
+# Make predictions on test set
+get_regression_points(model_lm_pointpricestastername, newdata = test)
+
+#analysis of poits to price 
+lm_points_country <- lm(points ~ price, top_country_variety)
+get_regression_table(lm_points_country)
+get_regression_summaries(lm_points_country)
+ggplot(top_country_variety, aes(x = price, y= points, color = country)) + 
+  geom_jitter() + geom_smooth(method = "lm") + 
+  scale_x_log10() +  ylab("Points") + xlab("Price (Log Scale)")
+
+#all the different regressions
+lm_country <- lm(points ~ country, top_country_variety)
+get_regression_table(lm_country)
+get_regression_summaries(lm_country)
+
+lm_province <- lm(points ~ province, top_country_variety)
+get_regression_summaries(lm_province)
+
+lm_taster <- lm(points ~ taster_name, top_country_variety)
+get_regression_table(lm_taster)
+get_regression_summaries(lm_taster)
+
+lm_points_variety <- lm(points ~ price + variety, variety_by_top_country)
+get_regression_table(lm_points_variety)
+get_regression_summaries(lm_points_variety)
+
+lm_points_variety <- lm(points ~ variety, top_country_variety)
+get_regression_table(lm_points_variety)
+get_regression_summaries(lm_points_variety)
