@@ -16,11 +16,9 @@ endnote: no
 
 
 # Introduction
-We can assume that our data set is normal based on the quanity of data provided (130K reviews) and by running tests to ensure normality. 
 
 # Initial analysis
-
-First, we started by installing all the necessary packages and loading the data set.
+First, we started by installing all the necessary packages and the data set.
 
 ```{r packages, message = FALSE, warning = FALSE, error = FALSE}
 library(tidyverse)
@@ -30,13 +28,20 @@ library(readr)
 winemag_data_130k_v2 <- read_csv("Downloads/wine-reviews/winemag-data-130k-v2.csv")
 winedata <- winemag_data_130k_v2
 ```
-
-Next we took an intial look at the data set after importing it.
+We started by assessing if the data we had was of a quality to identify potential relationships.  We first started by analyzing the data set by doing a manual interpratation of all the results and seeing if there where any abnormalites.  Based on the high quanitity (130K) and low abnormalities we deteremined the data was satisfactory during this test.  The following shows a breakdown of the dataset.
 
 ```{r dataimport}
 glimpse(winedata)
 ```
-(Write a description of the data set)
+
+Next, we conducted a test on normality to evaluate if the large volume of data collected followed a normal distribution, as we would expect wtih this type and quanity of data.  Using Nortest we tested both price and points as they were the only numerical variables and all others where catagorical.  
+
+```{r normality, warning = FALSE, error = FALSE}
+library(nortest)
+ad.test(winedata$price)
+ad.test(winedata$points)
+```
+Analyzing these two variables we found that the dataset was satisfactory to used based on having a p-value of less than 5% for both these key variables.
 
 ## Average reviews per country
 
@@ -147,7 +152,7 @@ get_regression_summaries(lm_taster)
 ```
 Analyzing 17 different tasters we see that the we have a correlation that is even higher than province and country, but still doesn't meet the level of price.  Looking at the significance of these raters, we see that only 4 of the raters are insignificant at the 5% level.
 
-## Using a single variables to understand correlation to point ranking
+## Using multiple variables to understand correlation to point ranking
 Looking at the previous results, we found that Price, Tasters, and Province had the stronest correlation, in that order.  Country and variety had the lowest correlation.
 
 ### Analyzing top 3 variables
