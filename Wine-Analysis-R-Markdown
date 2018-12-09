@@ -29,19 +29,19 @@ winemag_data_130k_v2 <- read_csv("Downloads/wine-reviews/winemag-data-130k-v2.cs
 winedata <- winemag_data_130k_v2
 ```
 
-```{r packages, echo = False}
-# This will be hidden from the final report printout
+```{r themes}
+
 custom_theme <- function (){
     theme_bw() +
-    theme(
+     theme(
      panel.background = element_rect(fill = "lightblue",
                                     colour = "lightblue",
                                     size = 0.5, linetype = "solid"),
-    panel.grid.major = element_line(size = 0.5, linetype = 'solid',
-                                    colour = "white"),
-    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
-                                    colour = "white")
-  )
+     panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                     colour = "white"),
+     panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                     colour = "white")
+   )
 }
 
 ```
@@ -126,7 +126,6 @@ Province
 Taster
 
 ```{r correlation}
-install.packages("ggcorrplot")
 library(ggcorrplot)
 numeric_winedata <- winedata %>%
   select(points, price)
@@ -203,7 +202,7 @@ get_regression_summaries(lm_all5)
 ```
 
 
-```{r pointsAll5 }
+```{r france}
 winedata %>%
   filter(price != "N/A") %>%
   mutate(log10_price = log10(price)) %>%
