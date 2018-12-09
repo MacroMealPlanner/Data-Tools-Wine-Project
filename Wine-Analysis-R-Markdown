@@ -28,9 +28,26 @@ library(readr)
 winemag_data_130k_v2 <- read_csv("Downloads/wine-reviews/winemag-data-130k-v2.csv")
 winedata <- winemag_data_130k_v2
 ```
+
+```{r packages, echo = False}
+# This will be hidden from the final report printout
+custom_theme <- function (){
+    theme_bw() +
+    theme(
+     panel.background = element_rect(fill = "lightblue",
+                                    colour = "lightblue",
+                                    size = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid',
+                                    colour = "white"),
+    panel.grid.minor = element_line(size = 0.25, linetype = 'solid',
+                                    colour = "white")
+  )
+}
+
+```
 We started by assessing if the data we had was of a quality to identify potential relationships.  We first started by analyzing the data set by doing a manual interpratation of all the results and seeing if there where any abnormalites.  Based on the high quanitity (130K) and low abnormalities we deteremined the data was satisfactory during this test.  The following shows a breakdown of the dataset.
 
-```{r dataimport}
+```{r dataglimpse}
 glimpse(winedata)
 ```
 
@@ -64,7 +81,7 @@ winedata %>%
   head(10) %>%
   ggplot(aes(x=fct_reorder(country, desc(n)), y=n, fill = country)) + 
   geom_col() +  xlab("Country") + ylab("Number of Reviews") + coord_flip() +
-  theme(legend.position="none")
+  theme(legend.position="none") + custom_theme()
 ```
 
 ## Variety/Price per country (Top 10)
@@ -77,7 +94,9 @@ top_country_variety <- winedata %>%
 ggplot(top_country_variety, aes(x=country, y= price)) +  
   geom_jitter(alpha = 0.5, aes(color=variety)) +
   geom_boxplot(alpha = 0) +
-  scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") 
+  scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)")  +
+  custom_theme() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 ## Price per variety for top 10 countries
@@ -91,7 +110,9 @@ ggplot(variety_by_top_country, aes(x=variety, y= price)) +
   geom_jitter(alpha = 0.5, aes(color=variety)) +
   geom_boxplot(alpha = 0) +
   scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") +
-  theme(legend.position="none")
+  theme(legend.position="none") +
+  custom_theme() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 #Regression analysis to explain points
@@ -104,6 +125,20 @@ Country
 Province
 Taster
 
+```{r correlation}
+install.packages("ggcorrplot")
+library(ggcorrplot)
+numeric_winedata <- winedata %>%
+  select(points, price)
+corr <- round(cor(numeric_winedata), 2)
+ggcorrplot(corr, 
+           method="circle", 
+           colors = c("tomato2", "white", "springgreen3"), 
+           title="Correlogram of Wine Data") + 
+          custom_theme()
+```
+
+
 ### Analyzing price
 ```{r pointsToprice}
 lm_points_price <- lm(points ~ price, top_country_variety)
@@ -115,7 +150,7 @@ This begins to show a slight correllation to between price and points.  With the
 ```{r pointsToprice2, warning= FALSE}
 ggplot(top_country_variety, aes(x = price, y= points, color = country)) + 
   geom_jitter() + geom_smooth(method = "lm") + 
-  scale_x_log10() +  ylab("Points") + xlab("Price (Log Scale)")
+  scale_x_log10() +  ylab("Points") + xlab("Price (Log Scale)") +  custom_theme()
 ```
 We decided to take this a step further and analyze this visulally breaking it out by country. One can see from the visualization that there is a strong correlation between the price and points.  
 
@@ -165,4 +200,16 @@ get_regression_summaries(lm_top3)
 ```{r pointsAll5}
 lm_all5 <- lm(points ~ price + taster_name + province + country + variety, top_country_variety)
 get_regression_summaries(lm_all5)
+```
+
+
+```{r pointsAll5 }
+winedata %>%
+  filter(price != "N/A") %>%
+  mutate(log10_price = log10(price)) %>%
+  filter(country == "France") %>%
+  filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend",
+                        "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot")) %>%
+  ggplot(aes(x = province, y = points, color = log10_price, color = qsec)) + geom_jitter() + labs(x = "Province", y = "Points", title = "Something Cool", las = 2) + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)) 
 ```
