@@ -4,7 +4,6 @@ title: "Predicting Point Score of Wine based on Different Attributes."
 authors:
 - name: Luke Barousse, Mariel Behnke, Chad Giganti, Alex Masica, Eric Weien
   affiliation: Ohio State University
-abstract: "(INSERT TEXT)"
 keywords: "wine, reviews, crunk"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 geometry: margin=1in
@@ -88,6 +87,7 @@ winedata %>%
 
 ```{r varietycountry, warning= FALSE}
 top_country_variety <- winedata %>%
+  mutate(log10price = log(price)) %>%
   group_by(country) %>%
   filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
   filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
@@ -103,6 +103,7 @@ ggplot(top_country_variety, aes(x=country, y= price)) +
 
 ```{r varieties, warning= FALSE}
 variety_by_top_country <- winedata %>%
+  mutate(log10price = log(price)) %>%
   group_by(variety) %>%
   filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
   filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
@@ -115,11 +116,11 @@ ggplot(variety_by_top_country, aes(x=variety, y= price)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-#Regression analysis to explain points
+#Regression analysis to explain price for consumers
 
 ## Using a single variables to understand correlation to point ranking
 We first plan to go through and compare the prediction of points based on a single value.  We focus on the following variables:
-Price
+Points
 Variety
 Country
 Province
@@ -138,25 +139,26 @@ ggcorrplot(corr,
 ```
 
 
-### Analyzing price
-```{r pointsToprice}
-lm_points_price <- lm(points ~ price, top_country_variety)
+### Analyzing points
+```{r points}
+lm_points_price <- lm(log10price ~ points, top_country_variety)
 get_regression_table(lm_points_price)
+get_regression_points(lm_points_price)
 get_regression_summaries(lm_points_price)
 ```
 This begins to show a slight correllation to between price and points.  With the point scale starting at 87.6 and then increasing .027 for each dollar increase in price.  However analayzing the full data set, one can see that the lowest score is actually around 79 and increases from there.
 
-```{r pointsToprice2, warning= FALSE}
-ggplot(top_country_variety, aes(x = price, y= points, color = country)) + 
+```{r pricetopoints, warning= FALSE}
+ggplot(top_country_variety, aes(x = points, y= price, color = country)) + 
   geom_jitter() + geom_smooth(method = "lm") + 
-  scale_x_log10() +  ylab("Points") + xlab("Price (Log Scale)") +  custom_theme()
+  scale_y_log10() +  ylab("Price (Log Scale)") + xlab("Points") +  custom_theme()
 ```
 We decided to take this a step further and analyze this visulally breaking it out by country. One can see from the visualization that there is a strong correlation between the price and points.  
 
 ### Analyzing variety
 
-```{r pointsTovariety}
-lm_points_variety <- lm(points ~ variety, top_country_variety)
+```{r variety}
+lm_points_variety <- lm(log10price ~ variety, top_country_variety)
 get_regression_table(lm_points_variety)
 get_regression_summaries(lm_points_variety)
 ```
@@ -164,8 +166,8 @@ This will endu up showing our lowest correlation related to point scale.  Intere
 
 
 ### Analyzing country
-```{r pointsTocountry}
-lm_country <- lm(points ~ country, top_country_variety)
+```{r country}
+lm_country <- lm(log10price ~ country, top_country_variety)
 get_regression_table(lm_country)
 get_regression_summaries(lm_country)
 ```
@@ -173,14 +175,14 @@ Using Argentia as the base country, it appears that the top 10 countries vary in
 
 ### Analyzing province
 ```{r pointsToprovince}
-lm_province <- lm(points ~ province, top_country_variety)
+lm_province <- lm(log10price ~ province, top_country_variety)
 get_regression_summaries(lm_province)
 ```
 As expected based on having more provinces than countries (148 provinces vs 10 countries), we saw a higher correlation between the variables.  However if you look further in the p-values (too many values to print here), more than half of the provinces are insignificant at the 5% level.
 
 ### Analyzing tasters
-```{r pointsTotaster}
-lm_taster <- lm(points ~ taster_name, top_country_variety)
+```{r taster}
+lm_taster <- lm(log10price ~ taster_name, top_country_variety)
 get_regression_table(lm_taster)
 get_regression_summaries(lm_taster)
 ```
@@ -191,24 +193,85 @@ Looking at the previous results, we found that Price, Tasters, and Province had 
 
 ### Analyzing top 3 variables
 ```{r pointsTop3}
-lm_top3 <- lm(points ~ price + taster_name + province, top_country_variety)
+lm_top3 <- lm(log10price ~ points + taster_name + province, top_country_variety)
 get_regression_summaries(lm_top3)
 ```
 
 ### Analyzing all 5 variables
 ```{r pointsAll5}
-lm_all5 <- lm(points ~ price + taster_name + province + country + variety, top_country_variety)
+lm_all5 <- lm(log10price ~ points + taster_name + province + country + variety, top_country_variety)
 get_regression_summaries(lm_all5)
 ```
-
+```{r america}
+top_country_variety %>%
+  filter(price != "N/A") %>%
+  filter(country == "US") %>%
+  filter(province != "America") %>% filter(province != "Washington-Oregon") %>%
+  ggplot(aes(x = province, y = points, color = log10price, color = qsec)) + geom_jitter() + labs(x = "Province", y = "Points") + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
 
 ```{r france}
-winedata %>%
+top_country_variety %>%
   filter(price != "N/A") %>%
-  mutate(log10_price = log10(price)) %>%
   filter(country == "France") %>%
-  filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend",
-                        "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot")) %>%
-  ggplot(aes(x = province, y = points, color = log10_price, color = qsec)) + geom_jitter() + labs(x = "Province", y = "Points", title = "Something Cool", las = 2) + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
+  ggplot(aes(x = province, y = points, color = log10price, color = qsec)) + geom_jitter() + labs(x = "Province", y = "Points") + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
     axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+```{r italy}
+top_country_variety %>%
+  filter(price != "N/A") %>%
+  filter(country == "Italy") %>%
+  ggplot(aes(x = province, y = points, color = log10price, color = qsec)) + geom_jitter() + labs(x = "Province", y = "Points") + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)) 
+```
+
+```{r model}
+# Randomly reorder the rows and remove N/A's
+top_country_variety$description <- NULL 
+wine_reviews_shuffled <- top_country_variety %>%
+  filter(province != "California") %>% filter(province != "Idaho") %>% 
+  filter(province != "Michigan") %>% filter(province != "New York") %>% 
+  filter(province != "Oregon") %>%  filter(province != "Virginia") %>% 
+  filter(province != "Washington") %>%
+  sample_frac(size = 1, replace = FALSE) %>%
+  filter(!is.na(log10price)) %>%
+  filter(!is.na(points)) %>%
+  filter(!is.na(province)) %>%
+  filter(!is.na(taster_name))
+glimpse(wine_reviews_shuffled)
+
+# Train/test split
+train <- wine_reviews_shuffled %>%
+  slice(1:5000)
+glimpse(train)
+test <- wine_reviews_shuffled %>%
+  slice(5001:64000)
+glimpse(test)
+
+trainmodel <- lm(log10price ~ points + province + taster_name, data=train)
+
+# Make predictions on test set
+residualdf <- get_regression_points(trainmodel, newdata = test)
+glimpse(residualdf)
+test$residual<- residualdf$residual
+glimpse(test)
+mean(test$residual)-2*sd(test$residual)
+mean(test$residual)-3*sd(test$residual)
+
+#this is my test statists
+goodprice <- test %>%
+  subset(residual < -.951)
+goodprice
+
+#yields 370 wines
+greatprice <- test %>%
+  subset(residual< -1.4273)
+greatprice
+
+max(goodprice$price)
+max(goodprice$points)
+
+
 ```
