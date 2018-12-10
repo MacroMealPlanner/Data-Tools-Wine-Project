@@ -347,7 +347,7 @@ custom_theme()
 ```
 
 #Conclusion
-Notice that the wines we have identified are not just the lowest price at each point value; there are other factors such as province and tastername. We believe the combination of points and taster name here is more valuable than just points, as we found a strong bias based on specific tasters based on the fact that most tasters focus on a specific geographic area. 
+Notice that the wines we have identified are not just the lowest price at each point value; there are other factors such as province and tastername. We believe the combination of points and taster name here is more valuable than just points, as tasters could be biased toward specific types of wine based on the fact that most tasters focus on a specific geographic area. 
 
 Further, our initial evidence of sticky prices, clustered around specific bands or price points was confirmed, as there is strong clustering around $10. 
 
