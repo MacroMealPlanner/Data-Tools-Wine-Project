@@ -1,10 +1,13 @@
 ---
-output: html_document
-title: "Predicting Point Score of Wine based on Different Attributes."
+output:
+  html_document:
+    toc: true
+    toc_float: true
+title: "Predicting Price of Wine based on Different Attributes."
 authors:
 - name: Luke Barousse, Mariel Behnke, Chad Giganti, Alex Masica, Eric Weien
   affiliation: Ohio State University
-keywords: "wine, reviews, crunk"
+keywords: "wine, weien, reviews, crunk, team sexy, "
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 geometry: margin=1in
 fontfamily: mathpazo
@@ -12,11 +15,13 @@ fontsize: 11pt
 spacing: double
 endnote: no
 ---
-
-
-# Introduction
+####by Luke Barousse, Mariel Behnke, Chad Giganti, Alex Masica, Eric Weien
 
 # Initial analysis
+This project analyzes *Wine Spectator* wine ratings relative to the price of the wine when taking into account other factors including wine variety as well as the country and region and many other factors. The goal is to identify wines that according to *Wine Spectator’s* tasters are an excellent value for the consumer. 
+
+*Wine Spectator* [rates wines](https://www.winespectator.com/display/show?id=about-our-tastings) in a blind format, so the goal of this analysis was to determine the extent to which prices and rating were related and help consumers capitalize on opportunities where they can purchase a very high quality wine for the price.  
+
 First, we started by installing all the necessary packages and the data set.
 
 ```{r packages, message = FALSE, warning = FALSE, error = FALSE}
@@ -24,9 +29,12 @@ library(tidyverse)
 library(dplyr)
 library(moderndive)
 library(readr)
+library(ggcorrplot)
 winemag_data_130k_v2 <- read_csv("Downloads/wine-reviews/winemag-data-130k-v2.csv")
 winedata <- winemag_data_130k_v2
 ```
+
+Additionally, we appllied the following theme to our graphs!
 
 ```{r themes}
 
@@ -44,22 +52,29 @@ custom_theme <- function (){
 }
 
 ```
-We started by assessing if the data we had was of a quality to identify potential relationships.  We first started by analyzing the data set by doing a manual interpratation of all the results and seeing if there where any abnormalites.  Based on the high quanitity (130K) and low abnormalities we deteremined the data was satisfactory during this test.  The following shows a breakdown of the dataset.
+
+We assessed if the data we had was of a quality to identify potential relationships.  We first started by analyzing the data set by doing a manual interpretation of all the results and seeing if there were any abnormalities.  Based on the high quantity (130K rows) and low abnormalities we determined the data was satisfactory during this test. The following shows a breakdown of the dataset. The data includes price, points, who rated the wine, geographic information, winery, and type of wine.
 
 ```{r dataglimpse}
 glimpse(winedata)
 ```
 
-Next, we conducted a test on normality to evaluate if the large volume of data collected followed a normal distribution, as we would expect wtih this type and quanity of data.  Using Nortest we tested both price and points as they were the only numerical variables and all others where catagorical.  
+Next, we conducted a test on normality to evaluate if the large volume of data collected followed a normal distribution, as we would expect with this type and quantity of data, and would need for a One-Way ANOVA .  Using Nortest we tested both price and points as they were the only numerical variables and all others were categorical.  
 
 ```{r normality, warning = FALSE, error = FALSE}
 library(nortest)
+winedata <- winedata %>%
+  mutate(log10price = log(price))
+
 ad.test(winedata$price)
+ad.test(winedata$log10price)
 ad.test(winedata$points)
 ```
-Analyzing these two variables we found that the dataset was satisfactory to used based on having a p-value of less than 5% for both these key variables.
+Analyzing these two variables we found that the dataset was non-normal, evidence that there are sticky price points. With the very large data set, we believe that the analysis will still largely be fruitful. 
 
-## Average reviews per country
+Next, we transformed (filtered top 10 countries and top 10 wine varieties) and performed basic visual analysis. 
+
+## Average points received per wine reviewed (Top 10 countries)
 
 ```{r avgreviews}
 winedata %>%
@@ -69,8 +84,9 @@ winedata %>%
   arrange(desc(avgPoints))
 ```
 
+The average wine score per country had a fairly wide spread given the size of the data set. This suggests that wines do differ in quality across countries. 
 
-## Number reviews per country (Top 10)
+## Number reviews per country (Top 10 countries)
 
 ```{r reviewscountry, warning = FALSE}
 winedata %>%
@@ -78,12 +94,16 @@ winedata %>%
   count(country) %>%
   arrange(desc(n)) %>%
   head(10) %>%
-  ggplot(aes(x=fct_reorder(country, desc(n)), y=n, fill = country)) + 
+  ggplot(aes(x=fct_reorder(country, desc(n)), y=n, fill = country)) +
   geom_col() +  xlab("Country") + ylab("Number of Reviews") + coord_flip() +
   theme(legend.position="none") + custom_theme()
 ```
 
-## Variety/Price per country (Top 10)
+As *Wine Spectator* is a US based publication, it is no surprise that the US has by far the largest number of wines reviews in this data set. 
+
+## Variety/Price per country (Top 10 countries)
+
+The following is the modified data set we used for the rest of the analysis of this report.  It includes the top 10 countries and top 10 varieties.  Also we mutated price into a log scale as it behaved more logarithmic in this manner.
 
 ```{r varietycountry, warning= FALSE}
 top_country_variety <- winedata %>%
@@ -91,15 +111,18 @@ top_country_variety <- winedata %>%
   group_by(country) %>%
   filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
   filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
+
 ggplot(top_country_variety, aes(x=country, y= price)) +  
   geom_jitter(alpha = 0.5, aes(color=variety)) +
-  geom_boxplot(alpha = 0) +
+  geom_violin(alpha = 0) +
   scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)")  +
   custom_theme() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-## Price per variety for top 10 countries
+## Price per variety (Top 10 countries and varieties)
+
+The following was just used to further explore variety per country.  As it was not as insightful, we did not use this dataset for the rest of our analysis.
 
 ```{r varieties, warning= FALSE}
 variety_by_top_country <- winedata %>%
@@ -107,89 +130,139 @@ variety_by_top_country <- winedata %>%
   group_by(variety) %>%
   filter(country %in% c("US","France","Italy","Spain","Portugal","Chile","Argentina","Austria","Australia","Germany")) %>%
   filter(variety %in% c("Pinot Noir", "Chardonnay","Cabernet Sauvignon","Red Blend", "Bordeaux-style Red Blend","Riesling","Sauvignon Blanc","Syrah","RosÃ©","Merlot"))
+
 ggplot(variety_by_top_country, aes(x=variety, y= price)) +  
   geom_jitter(alpha = 0.5, aes(color=variety)) +
-  geom_boxplot(alpha = 0) +
+  geom_violin(alpha = 0) +
   scale_y_log10() +  xlab("Country") + ylab("Price (Log Scale)") +
   theme(legend.position="none") +
   custom_theme() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+## Price/points for different provinces (Top 3 countries)
+In order to better understand the data set, we wanted to see if there was correlation differences from country to country.  For this analysis we only focused on the top 3 countries as they had the bulk of all the reviews.
+
+###America
+```{r america, warning= FALSE}
+top_country_variety %>%
+  filter(price != "N/A") %>%
+  filter(country == "US") %>%
+  filter(province != "America") %>% filter(province != "Washington-Oregon") %>%
+  ggplot(aes(x = province, y = log10price, color = points, color = qsec)) + geom_jitter() + geom_violin(alpha = 0) +
+  labs(x = "Province", y = "Price (Log Scale)") + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
+    axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+With this data set, one can see that there is not a large correlation begtween price and points, as we would expect based on our R^2 value. 
+
+###France
+```{r france, warning= FALSE}
+top_country_variety %>%
+  filter(price != "N/A") %>%
+  filter(country == "France") %>%
+  ggplot(aes(x = province, y = log10price, color = points, color = qsec)) + geom_jitter() + geom_violin(alpha = 0) +
+  labs(x = "Province", y = "Price (Log Scale)") + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
+    axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+This analysis, more aligned with what we expected in seeing a correlation of price and points.
+
+###Italy
+```{r italy, warning= FALSE}
+top_country_variety %>%
+  filter(price != "N/A") %>%
+  filter(country == "Italy") %>%
+  ggplot(aes(x = province, y = log10price, color = points, color = qsec)) + geom_jitter() + geom_violin(alpha = 0) +
+  labs(x = "Province", y = "Price (Log Scale)") + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
+    axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+The final analysis was more of a midpoint in the visual differences between the US and France.
+
 #Regression analysis to explain price for consumers
 
-## Using a single variables to understand correlation to point ranking
-We first plan to go through and compare the prediction of points based on a single value.  We focus on the following variables:
+## Using a single variable to understand correlation to point ranking
+We first planned to go through and compare the prediction of price based on a single value. We focus on the following variables:
 Points
 Variety
 Country
 Province
 Taster
 
-```{r correlation}
+Note that we chose to use log10(price), instead of just price, as our data went from wines around $10 to wines in the tens of thousands of dollars. Looking at price linearly hides potential relationships. 
+
+Additionally, we continued to use data focused on countries that produce the most wine for most of these analyses. Knowing what we know about how Wine Spectator handles tasting - specifically that different tasters typically [handle specific countries or regions](https://www.winespectator.com/display/show/id/taster-profiles), issues of multicollinearity might arise when including location factors and tasters. However, by selecting the top 10 countries with the most wines reviewed, it largely eliminates this issue as there are many tasters covering these countries. 
+
+```{r correlation, echo = FALSE}
 library(ggcorrplot)
 numeric_winedata <- winedata %>%
   select(points, price)
 corr <- round(cor(numeric_winedata), 2)
-ggcorrplot(corr, 
-           method="circle", 
-           colors = c("tomato2", "white", "springgreen3"), 
-           title="Correlogram of Wine Data") + 
+ggcorrplot(corr,
+           method="circle",
+           colors = c("tomato2", "white", "springgreen3"),
+           title="Correlogram of Wine Data") +
           custom_theme()
 ```
 
-
-### Analyzing points
+### Analyzing Points
 ```{r points}
 lm_points_price <- lm(log10price ~ points, top_country_variety)
 get_regression_table(lm_points_price)
 get_regression_points(lm_points_price)
 get_regression_summaries(lm_points_price)
 ```
-This begins to show a slight correllation to between price and points.  With the point scale starting at 87.6 and then increasing .027 for each dollar increase in price.  However analayzing the full data set, one can see that the lowest score is actually around 79 and increases from there.
+
+This begins to show a slight correlation to between price and points.  While the negative intercept is not very meaningful for lower priced wines, there is a significant .131 increase in log10price for every additional point rating.
 
 ```{r pricetopoints, warning= FALSE}
-ggplot(top_country_variety, aes(x = points, y= price, color = country)) + 
-  geom_jitter() + geom_smooth(method = "lm") + 
+ggplot(top_country_variety, aes(x = points, y= price, color = country)) +
+  geom_jitter() + geom_smooth(method = "lm") +
   scale_y_log10() +  ylab("Price (Log Scale)") + xlab("Points") +  custom_theme()
 ```
-We decided to take this a step further and analyze this visulally breaking it out by country. One can see from the visualization that there is a strong correlation between the price and points.  
 
-### Analyzing variety
+We decided to take this a step further and analyze this visually breaking it out by country. One can see from the visualization that there is a strong positive correlation between the price and points, regardless of country. The effect is strongest for Germany (largest slope) and weakest for US (smallest slope). Speculating, this might have to do with supply and demand: potentially, a surplus supply in the US could lead to underpricing while Germany, which produces less than most countries in the top 10 list, might have a dearth.
+
+### Analyzing Variety
 
 ```{r variety}
 lm_points_variety <- lm(log10price ~ variety, top_country_variety)
 get_regression_table(lm_points_variety)
 get_regression_summaries(lm_points_variety)
 ```
-This will endu up showing our lowest correlation related to point scale.  Interestingly enough, we felt with our inital research that this would be a key correlator of point ranking, however this disproved that.
 
+This will end up showing our second lowest correlation related to log10(price).  Interestingly enough, we felt with our initial research that this would be a key correlator of point ranking, however this disproved that. For example, we thought old vine wines like zinfandel would command a higher price. However, famous wine designations such as “first growth” have less to do with a specific type of grape variety, and more to do with geography and vineyard. 
 
-### Analyzing country
+### Analyzing Country
 ```{r country}
 lm_country <- lm(log10price ~ country, top_country_variety)
 get_regression_table(lm_country)
 get_regression_summaries(lm_country)
 ```
-Using Argentia as the base country, it appears that the top 10 countries vary in range from 86.3 to 90.8, with Austria having the highest point value based on country alone.  Although all variables are significant at the 5% level, the R^2 is even small than that for the evaluation against price.
 
-### Analyzing province
+Using Argentina as the base country, it appears that the top 10 countries vary in range from exp(2.92-.94)= $7.24 to exp(2.92+.585)= $33.28, with the US having the highest price based on country alone.  Although all variables are significant at the any level, the R^2 is even small than that for the evaluation against variety, explaining only about 7.4% of the variation.
+
+### Analyzing Province
 ```{r pointsToprovince}
 lm_province <- lm(log10price ~ province, top_country_variety)
+get_regression_table(lm_province)
 get_regression_summaries(lm_province)
 ```
-As expected based on having more provinces than countries (148 provinces vs 10 countries), we saw a higher correlation between the variables.  However if you look further in the p-values (too many values to print here), more than half of the provinces are insignificant at the 5% level.
 
-### Analyzing tasters
+As expected based on having more provinces than countries (148 provinces vs 10 countries), we saw a higher correlation between the variables.  However if you look further in the p-values (too many values to print here), more than half of the provinces are insignificant at the 5% level. Based on the previous discussion of designation, “First Growth” or “Premier Cru”, is a designation given to a specific region in France; ergo, looking at specific provinces should correlate more to higher value wines. 
+
+### Analyzing Tasters
 ```{r taster}
 lm_taster <- lm(log10price ~ taster_name, top_country_variety)
 get_regression_table(lm_taster)
 get_regression_summaries(lm_taster)
 ```
-Analyzing 17 different tasters we see that the we have a correlation that is even higher than province and country, but still doesn't meet the level of price.  Looking at the significance of these raters, we see that only 4 of the raters are insignificant at the 5% level.
+
+Analyzing 17 different tasters we see that the we have a correlation that is even higher than variety and country, but still doesn't meet the level of points.  Looking at the significance of these raters, we see that 12 of the 17 raters are significant at the 5% level. Noteworthy here is that many of *Wine Spectator’s* tasters typically cover specific regions; it is unclear whether certain tasters are more or less likely to give out very high scores or whether wines from certain countries or regions are more or less likely to be of very high quality. 
 
 ## Using multiple variables to understand correlation to point ranking
-Looking at the previous results, we found that Price, Tasters, and Province had the stronest correlation, in that order.  Country and variety had the lowest correlation.
+Looking at the previous results, we found that Points, Tasters, and Province had the strongest correlation, in that order.  Country and variety had the lowest correlation.
 
 ### Analyzing top 3 variables
 ```{r pointsTop3}
@@ -197,62 +270,52 @@ lm_top3 <- lm(log10price ~ points + taster_name + province, top_country_variety)
 get_regression_summaries(lm_top3)
 ```
 
+Looking at single regressions does not control for other factors. We then performed a multiple regression on the top 3 variables and found that points, taster, and province explained about 51% of variation in price and is significant at any significance level. When we added the two other variables, and all 5 models explained about 56% of variation. While there is an argument to be made for the more explanatory more with 5 independent variables, we chose the model with the simpler model to continue our analysis as we did not believe the benefits of an additional 5% explanatory power to be a practical addition. At this point we wished to analyze whether or not we could predict any under-priced wines.
+
+Note: we also looked at significance of vineyard on price. It was highly significant, but models could not be run with other variables without crashing our computers. We have thus left it out of the model and allowed province to serve as a rough proxy.
+
 ### Analyzing all 5 variables
 ```{r pointsAll5}
 lm_all5 <- lm(log10price ~ points + taster_name + province + country + variety, top_country_variety)
 get_regression_summaries(lm_all5)
 ```
-```{r america}
-top_country_variety %>%
-  filter(price != "N/A") %>%
-  filter(country == "US") %>%
-  filter(province != "America") %>% filter(province != "Washington-Oregon") %>%
-  ggplot(aes(x = province, y = points, color = log10price, color = qsec)) + geom_jitter() + labs(x = "Province", y = "Points") + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)) 
-```
 
-```{r france}
-top_country_variety %>%
-  filter(price != "N/A") %>%
-  filter(country == "France") %>%
-  ggplot(aes(x = province, y = points, color = log10price, color = qsec)) + geom_jitter() + labs(x = "Province", y = "Points") + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)) 
-```
+## Train and Test the Model to Identify Underpriced Wines
 
-```{r italy}
-top_country_variety %>%
-  filter(price != "N/A") %>%
-  filter(country == "Italy") %>%
-  ggplot(aes(x = province, y = points, color = log10price, color = qsec)) + geom_jitter() + labs(x = "Province", y = "Points") + scale_color_gradient(low = "White", high = "red") + custom_theme() + theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)) 
-```
+###Building the model
+We randomly assigned 100% of rows across a train and test set so as we felt identifying points within the model (which was based on the points) to be circular reasoning. We filtered low-production states and reviewers that only a small number of reviews from the data set - when randomly splitting data, it was far too easy for all rows of data of a certain small province/state or a taster with limited representation in our filtered data set to end up in only one part of the split data, yielding errors in the model. 
 
 ```{r model}
-# Randomly reorder the rows and remove N/A's
-top_country_variety$description <- NULL 
+#Since the model is based on provinces and tasters, we had to remove those with small data sets
+top_country_variety$description <- NULL
 wine_reviews_shuffled <- top_country_variety %>%
-  filter(province != "California") %>% filter(province != "Idaho") %>% 
-  filter(province != "Michigan") %>% filter(province != "New York") %>% 
-  filter(province != "Oregon") %>%  filter(province != "Virginia") %>% 
-  filter(province != "Washington") %>%
+  filter(province != "Arizona") %>% filter(province != "Colorado") %>%
+  filter(province != "Connecticut") %>% filter(province != "Massachusetts") %>%
+  filter(province != "Missouri") %>% filter(province != "Nevada") %>%
+  filter(province != "New Jersey") %>% filter(province != "New Mexico") %>%
+  filter(province != "North Carolina") %>% filter(province != "Ohio") %>%
+  filter(province != "Pennsylvania") %>%  filter(province != "Texas") %>%
+  filter(taster_name != "Fiona Adams") %>% filter(taster_name != "Christina Pickard") %>%
   sample_frac(size = 1, replace = FALSE) %>%
   filter(!is.na(log10price)) %>%
   filter(!is.na(points)) %>%
   filter(!is.na(province)) %>%
   filter(!is.na(taster_name))
-glimpse(wine_reviews_shuffled)
 
-# Train/test split
 train <- wine_reviews_shuffled %>%
-  slice(1:5000)
+  slice(1:10800)
 glimpse(train)
 test <- wine_reviews_shuffled %>%
-  slice(5001:64000)
+  slice(10801:46665)
 glimpse(test)
 
 trainmodel <- lm(log10price ~ points + province + taster_name, data=train)
+```
 
-# Make predictions on test set
+###Identifying good and great priced wines
+Next, we used the 'trainmodel' to predict log10price in our test set and looked at the residuals, identifying those that are 2 standard deviations below their predicted value as being the good priced wines and 3 standard deviations below to be great priced (a common heuristic that minimizes type 1 errors in a practical way).
+
+```{r model2}
 residualdf <- get_regression_points(trainmodel, newdata = test)
 glimpse(residualdf)
 test$residual<- residualdf$residual
@@ -260,18 +323,36 @@ glimpse(test)
 mean(test$residual)-2*sd(test$residual)
 mean(test$residual)-3*sd(test$residual)
 
-#this is my test statists
 goodprice <- test %>%
   subset(residual < -.951)
-goodprice
+goodprice %>% select(price, points, title, winery, variety)
 
-#yields 370 wines
 greatprice <- test %>%
   subset(residual< -1.4273)
-greatprice
+greatprice %>% select(price, points, title, winery, variety)
+```
 
-max(goodprice$price)
-max(goodprice$points)
+###Visualizing good and great priced wines
+With the great (3 Standard Deviations) and good  (2 Standard Deviations) prices idenfied we then wanted to visualize where they are in relation to other wines.  Additionally, performing an ANova 
 
+```{r model3}
+ggplot() +  
+geom_point(data = wine_reviews_shuffled, aes(x = points, y = price), color = "red", size = 1) +
+geom_point(data = goodprice, aes(x = points, y = price), color = "blue", size = 3) +
+geom_point(data = greatprice, aes(x = points, y = price), color = "green", size = 5) + geom_jitter () +
+xlab('Points') +
+ylab('Price (Log Scale)') +
+scale_y_log10() +
+custom_theme()
+```
+
+#Conclusion
+Notice that the wines we have identified are not just the lowest price at each point value; there are other factors such as province and tastername. We believe the combination of points and taster name here is more valuable than just points, as we found a strong bias based on specific tasters based on the fact that most tasters focus on a specific geographic area. 
+
+Further, our initial evidence of sticky prices, clustered around specific bands or price points was confirmed, as there is strong clustering around $10. 
+
+Given the random split of the data, the test data set typically yields about 200 “good price” wines and a handful of “great price” wines. Given that the US wines had a lower slope in the initial regression model and that there was a weaker correlation between points and price, with more internal variability (as demonstrated by the chart showing prices and points by color within provinces in the most prominent countries in the data set), it is not surprising that most of the wines in these data sets are from the US. 
+
+To further this analysis, we should offer a mechanism by which to filter for specific wine preferences (such as wine varieties) to identify best prices within a specific set of parameters. We could also conduct text analysis to identify what taste descriptors (such as “blackberry” or “light-bodied”) best correlated with higher or lower scoring wines. 
 
 ```
